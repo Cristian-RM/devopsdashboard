@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabla de Tareas - Azure DevOps</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-dark text-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <a class="navbar-brand d-flex align-items-center" href="index.html">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg" width="32" height="32" class="mr-2" alt="Azure Logo">
+            <span>DevOps Dashboard System Process</span>
+        </a>
+        <div class="ml-auto d-flex align-items-center">
+            <button id="dashboardBtn" class="btn btn-outline-light mr-2" onclick="window.location.href='index.html'">Dashboard Global</button>
+            <button id="tasksBtn" class="btn btn-outline-light active">Tabla de Tareas</button>
+            <button id="configBtn" class="btn btn-outline-secondary ml-2" onclick="showConfigModal()" title="Configurar Token"><i class="fa fa-cog"></i> Configurar</button>
+        </div>
+    </nav>
+    <!-- Filtros -->
+    <div class="container-filtros">
+        <div class="row align-items-end">
+            <div class="col-md-3 col-sm-6 mb-2">
+                <input id="dateRange" class="form-control" placeholder="Rango de fechas" readonly>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <select id="assignedTo" class="form-control">
+                    <option value="ALL">Todos los usuarios</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <input id="freeDays" class="form-control" placeholder="Días libres (YYYY-MM-DD, coma)">
+            </div>
+            <div class="col-md-2 col-sm-6 mb-2">
+                <button id="loadTasksBtn" class="btn btn-primary w-100">Cargar</button>
+            </div>
+            <div class="col-md-1 col-sm-12 mb-2 text-right">
+                <button id="editConfigBtn" class="btn btn-outline-secondary" title="Configurar conexión"><i class="fa fa-cog"></i></button>
+            </div>
+        </div>
+    </div>
+    <!-- Buscador y exportar -->
+    <div class="container-filtros mb-2">
+        <div class="row align-items-center">
+            <div class="col-md-6 col-sm-12 mb-2">
+                <input id="searchInput" class="form-control" placeholder="Buscar en la tabla...">
+            </div>
+            <div class="col-md-6 col-sm-12 mb-2 text-right">
+                <button id="exportBtn" class="btn btn-success">Exportar a Excel/CSV</button>
+            </div>
+        </div>
+    </div>
+    <!-- Tabla -->
+    <div class="container-fluid dashboard-main mt-2">
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">Tabla de Tareas</h5>
+                <div id="tasks-table-container" style="overflow-x:auto;"></div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script type="module" src="tasks.js"></script>
+    <script>
+    // --- Configuración de organización hardcodeada y modal de token ---
+    const HARDCODED_ORG = 'lascatalinas'; // Organización correcta
+    const HARDCODED_PROJECT = 'Devops System Process'; // Proyecto por defecto
+    function showConfigModal() {
+        let pat = localStorage.getItem('devopsPAT') || '';
+        let modal = document.createElement('div');
+        modal.id = 'config-modal';
+        modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="background:#222;padding:30px 30px 20px 30px;border-radius:12px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px #0002;position:relative;color:#fff;">
+                <h4>Configurar Token de Acceso</h4>
+                <div class="form-group">
+                    <label for="pat-input">Personal Access Token (PAT)</label>
+                    <input type="password" id="pat-input" class="form-control" value="${pat}" placeholder="Tu PAT de Azure DevOps">
+                </div>
+                <div class="text-right mt-3">
+                    <button class="btn btn-primary" onclick="savePAT()">Guardar</button>
+                    <button class="btn btn-secondary ml-2" onclick="closeConfigModal()">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    function closeConfigModal() {
+        let modal = document.getElementById('config-modal');
+        if (modal) document.body.removeChild(modal);
+    }
+    function savePAT() {
+        let pat = document.getElementById('pat-input').value;
+        localStorage.setItem('devopsPAT', pat);
+        // Sincroniza con devopsConfig
+        let config = JSON.parse(localStorage.getItem('devopsConfig') || '{}');
+        config.pat = pat;
+        config.organization = HARDCODED_ORG;
+        config.project = HARDCODED_PROJECT;
+        localStorage.setItem('devopsConfig', JSON.stringify(config));
+        closeConfigModal();
+        alert('Token guardado correctamente.');
+    }
+    </script>
+</body>
+</html> 

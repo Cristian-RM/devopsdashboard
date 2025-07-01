@@ -4,8 +4,9 @@
     box-sizing: border-box;
 }
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Montserrat', Arial, sans-serif;
+    background: #181c24;
+    color: #f8f9fa;
     min-height: 100vh;
     padding: 20px;
 }
@@ -143,4 +144,112 @@ body {
 .form-group input:focus {
     outline: none;
     border-color: #0078d4;
+}
+
+.navbar {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    padding: 0.5rem 2rem;
+}
+
+.navbar-brand img {
+    margin-right: 0.5rem;
+}
+
+.dashboard-main {
+    max-width: 90vw;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.kpi-card {
+    border: none;
+    border-radius: 1rem;
+    background: #232a36;
+    color: #fff;
+    min-height: 160px;
+    transition: box-shadow 0.2s;
+}
+.kpi-card:hover {
+    box-shadow: 0 4px 24px rgba(0,123,255,0.15);
+}
+.kpi-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+.kpi-1 { border-left: 5px solid #007bff; }
+.kpi-2 { border-left: 5px solid #28a745; }
+.kpi-3 { border-left: 5px solid #ffc107; }
+.kpi-4 { border-left: 5px solid #17a2b8; }
+
+.card-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.card {
+    background: #232a36;
+    border-radius: 1rem;
+    border: none;
+}
+
+/* Filtros alineados con dashboard */
+.container-filtros {
+    max-width: 90vw;
+    margin-left: auto;
+    margin-right: auto;
+    margin-top: 2rem;
+    margin-bottom: 0.5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+}
+
+/* Filtros */
+#dateRange {
+    background: #232a36;
+    color: #fff;
+    border: 1px solid #343a40;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+}
+#dateRange:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+}
+
+/* Gráficos */
+#bar-users, #radial-compliance, #line-hours, #spark-expected, #spark-logged, #spark-diff, #spark-effectiveness {
+    min-height: 120px;
+}
+
+@media (max-width: 991px) {
+    .container-filtros {
+        max-width: 100vw;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+    .dashboard-main {
+        max-width: 100vw;
+        padding: 0 0.5rem;
+    }
+    .kpi-card {
+        min-height: 120px;
+    }
+}
+
+@media (max-width: 767px) {
+    .navbar {
+        padding: 0.5rem 1rem;
+    }
+    .dashboard-main {
+        padding: 0 0.2rem;
+    }
+    .container-filtros {
+        padding-left: 0.2rem;
+        padding-right: 0.2rem;
+    }
+    .kpi-value {
+        font-size: 2rem;
+    }
 } 

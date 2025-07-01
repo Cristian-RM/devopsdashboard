@@ -53,7 +53,7 @@ export async function fetchWorkItemsForProject(org, project, pat, wiqlTemplate, 
     let allDetails = [];
     for (let i = 0; i < ids.length; i += batchSize) {
         const batchIds = ids.slice(i, i + batchSize).join(',');
-        const detailsUrl = `https://dev.azure.com/${org}/_apis/wit/workitems?ids=${batchIds}&fields=System.Id,System.Title,System.WorkItemType,System.State,System.TeamProject,System.CreatedDate,Microsoft.VSTS.Scheduling.TargetDate,Microsoft.VSTS.Scheduling.StartDate,Microsoft.VSTS.Common.Activity,Custom.DurationInHours,System.Parent,System.AssignedTo&api-version=7.0`;
+        const detailsUrl = `https://dev.azure.com/${org}/_apis/wit/workitems?ids=${batchIds}&fields=System.Id,System.Title,System.WorkItemType,System.State,System.TeamProject,System.CreatedDate,Microsoft.VSTS.Scheduling.TargetDate,Microsoft.VSTS.Scheduling.StartDate,Microsoft.VSTS.Common.Activity,Custom.DurationInHours,System.Parent,System.AssignedTo,System.AreaPath&api-version=7.0`;
         const detailsRes = await fetch(detailsUrl, {
             headers: { 'Authorization': 'Basic ' + btoa(':' + pat) }
         });

@@ -4,23 +4,201 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Azure DevOps Dashboard</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🚀 Azure DevOps Dashboard</h1>
-            <p>Resumen y efectividad de horas trabajadas</p>
+<body class="bg-dark text-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top">
+        <a class="navbar-brand d-flex align-items-center" href="#">
+            <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/azure/azure-original.svg" width="32" height="32" class="mr-2" alt="Azure Logo">
+            <span>DevOps Dashboard System Process</span>
+        </a>
+        <div class="ml-auto d-flex align-items-center">
+            <button id="dashboardBtn" class="btn btn-outline-light mr-2" onclick="window.location.href='index.html'">Dashboard Global</button>
+            <button id="tasksBtn" class="btn btn-outline-light" onclick="window.location.href='tasks.html'">Tabla de Tareas</button>
+            <button id="configBtn" class="btn btn-light ml-3 p-0 d-flex align-items-center justify-content-center" style="width:36px;height:36px;border-radius:50%;box-shadow:0 1px 4px #0001;" onclick="showConfigModal()" title="Configurar Token">
+                <svg width="20" height="20" fill="#888" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v.41c.58.2 1.12.5 1.6.88l.29-.29a2 2 0 1 1 2.83 2.83l-.29.29c.38.48.68 1.02.88 1.6H13a2 2 0 0 1 0 4h-.41a5.97 5.97 0 0 1-.88 1.6l.29.29a2 2 0 1 1-2.83 2.83l-.29-.29a5.97 5.97 0 0 1-1.6.88V15a2 2 0 0 1-4 0v-.41a5.97 5.97 0 0 1-1.6-.88l-.29.29a2 2 0 1 1-2.83-2.83l.29-.29a5.97 5.97 0 0 1-.88-1.6H1a2 2 0 0 1 0-4h.41a5.97 5.97 0 0 1 .88-1.6l-.29-.29A2 2 0 1 1 4.83 3.29l.29.29c.48-.38 1.02-.68 1.6-.88V3a2 2 0 0 1 2-2zm0 2a1 1 0 0 0-1 1v1.09a5.97 5.97 0 0 0-2.47 1.03l-.77-.77a1 1 0 1 0-1.41 1.41l.77.77A5.97 5.97 0 0 0 3.09 7H2a1 1 0 1 0 0 2h1.09a5.97 5.97 0 0 0 1.03 2.47l-.77.77a1 1 0 1 0 1.41 1.41l.77-.77A5.97 5.97 0 0 0 7 12.91V14a1 1 0 1 0 2 0v-1.09a5.97 5.97 0 0 0 2.47-1.03l.77.77a1 1 0 0 0 1.41-1.41l-.77-.77A5.97 5.97 0 0 0 12.91 9H14a1 1 0 1 0 0-2h-1.09a5.97 5.97 0 0 0-1.03-2.47l.77-.77a1 1 0 1 0-1.41-1.41l-.77.77A5.97 5.97 0 0 0 9 3.09V3a1 1 0 0 0-1-1z"/></svg>
+            </button>
         </div>
-        <nav class="main-nav">
-            <button id="dashboardBtn" class="btn btn-primary">Dashboard Global</button>
-            <button id="tasksBtn" class="btn btn-secondary">Tabla de Tareas</button>
-        </nav>
-        <div id="main-content">
-            <!-- Aquí se cargará el dashboard o la tabla de tareas -->
+    </nav>
+
+    <!-- Filtros y Configuración -->
+    <div class="container-filtros">
+        <div class="row align-items-end">
+            <div class="col-md-3 col-sm-6 mb-2">
+                <input id="dateRange" class="form-control" placeholder="Rango de fechas" readonly>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <select id="assignedTo" class="form-control">
+                    <option value="ALL">Todos los usuarios</option>
+                </select>
+            </div>
+            <div class="col-md-3 col-sm-6 mb-2">
+                <input id="freeDays" class="form-control" placeholder="Días libres (YYYY-MM-DD, coma)">
+            </div>
+            <div class="col-md-2 col-sm-6 mb-2">
+                <button id="loadGlobalBtn" class="btn btn-primary w-100">Cargar</button>
+            </div>
+            <div class="col-md-1 col-sm-12 mb-2 text-right">
+                <button id="editConfigBtn" class="btn btn-outline-secondary" title="Configurar conexión"><i class="fa fa-cog"></i></button>
+            </div>
         </div>
     </div>
+
+    <!-- Dashboard -->
+    <div class="container-fluid dashboard-main mt-2">
+        <div class="row">
+            <!-- KPIs -->
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card kpi-card kpi-1 shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Horas Esperadas</h5>
+                        <h2 id="kpi-expected" class="kpi-value">0</h2>
+                        <div id="spark-expected"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card kpi-card kpi-2 shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Horas Registradas</h5>
+                        <h2 id="kpi-logged" class="kpi-value">0</h2>
+                        <div id="spark-logged"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card kpi-card kpi-3 shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Diferencia</h5>
+                        <h2 id="kpi-diff" class="kpi-value">0</h2>
+                        <div id="spark-diff"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6 mb-4">
+                <div class="card kpi-card kpi-4 shadow-sm">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Efectividad</h5>
+                        <h2 id="kpi-effectiveness" class="kpi-value">0%</h2>
+                        <div id="spark-effectiveness"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Gráficos principales -->
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Comparativa de Horas por Usuario</h5>
+                        <div id="bar-users"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Cumplimiento de Horas</h5>
+                        <div id="radial-compliance"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Nuevos gráficos: debajo de los principales -->
+        <div class="row">
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Horas por Proyecto</h5>
+                        <div id="project-chart"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Distribución de Actividad</h5>
+                        <div id="activity-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">Evolución de Horas en el Tiempo</h5>
+                        <div id="line-hours"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module" src="main.js"></script>
+    <script>
+    // --- Configuración de organización hardcodeada y modal de token ---
+    const HARDCODED_ORG = 'lascatalinas'; // Organización correcta
+    const HARDCODED_PROJECT = 'Devops System Process'; // Proyecto por defecto
+    function showConfigModal() {
+        let pat = localStorage.getItem('devopsPAT') || '';
+        let show = false;
+        let modal = document.createElement('div');
+        modal.id = 'config-modal';
+        modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style="background:#222;padding:30px 30px 20px 30px;border-radius:12px;min-width:340px;max-width:90vw;box-shadow:0 8px 32px #0002;position:relative;color:#fff;">
+                <h4 class='mb-3'>Configuración de Azure DevOps</h4>
+                <div class="form-group mb-2">
+                    <label>Organización</label>
+                    <input type="text" class="form-control" value="${HARDCODED_ORG}" readonly style="background:#333;color:#aaa;font-weight:bold;">
+                </div>
+                <div class="form-group mb-2">
+                    <label for="pat-input">Personal Access Token (PAT)</label>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="password" id="pat-input" class="form-control" value="${pat}" placeholder="Tu PAT de Azure DevOps" style="flex:1;">
+                        <button id="togglePat" class="btn btn-sm btn-secondary" tabindex="-1" style="min-width:40px;" onclick="togglePATVisibility()">👁️</button>
+                    </div>
+                </div>
+                <div class="text-right mt-3">
+                    <button class="btn btn-success font-weight-bold" onclick="savePAT()">Guardar</button>
+                    <button class="btn btn-outline-light ml-2" onclick="closeConfigModal()">Cancelar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+        window.togglePATVisibility = function() {
+            let input = document.getElementById('pat-input');
+            let btn = document.getElementById('togglePat');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
+    }
+    function closeConfigModal() {
+        let modal = document.getElementById('config-modal');
+        if (modal) document.body.removeChild(modal);
+    }
+    function savePAT() {
+        let pat = document.getElementById('pat-input').value;
+        localStorage.setItem('devopsPAT', pat);
+        // Sincroniza con devopsConfig
+        let config = JSON.parse(localStorage.getItem('devopsConfig') || '{}');
+        config.pat = pat;
+        config.organization = HARDCODED_ORG;
+        config.project = HARDCODED_PROJECT;
+        localStorage.setItem('devopsConfig', JSON.stringify(config));
+        closeConfigModal();
+        alert('Token guardado correctamente.');
+    }
+    </script>
 </body>
 </html>

@@ -49,7 +49,7 @@ export function getDashboardSummary(workItems, filters) {
         businessDays = getBusinessDays(dateFrom, dateTo, freeDays);
         // Si es "ALL", multiplicar por el número de desarrolladores
         const developerCount = assignedTo === 'ALL' ? DEVELOPERS.length : 1;
-        expectedHours = businessDays * 7 * developerCount; // 7 horas por día hábil por desarrollador
+        expectedHours = businessDays * 9 * developerCount; // 9 horas por día hábil por desarrollador
     }
     // Efectividad
     const effectiveness = expectedHours > 0 ? (totalHours / expectedHours) * 100 : 0;
@@ -132,6 +132,8 @@ export function transformTaskTableRows(workItems) {
             pbi,
             title: wi.fields['System.Title'],
             id: wi.id,
+            url: wi.url || '',
+            areaPath: wi.fields['System.AreaPath'] || '',
             duration: duration,
             start: wi.fields['Microsoft.VSTS.Scheduling.StartDate'] || wi.fields['System.CreatedDate'] ? (wi.fields['Microsoft.VSTS.Scheduling.StartDate'] || wi.fields['System.CreatedDate']).split('T')[0] : '',
             target: wi.fields['Microsoft.VSTS.Scheduling.TargetDate'] || wi.fields['System.ChangedDate'] ? (wi.fields['Microsoft.VSTS.Scheduling.TargetDate'] || wi.fields['System.ChangedDate']).split('T')[0] : '',

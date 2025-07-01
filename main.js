@@ -3,16 +3,96 @@ import { fetchWorkItemsForProject } from './azureDevOpsApi.js';
 import { getDashboardSummary, groupByProject, getActivitySummary, transformTaskTableRows } from './dataTransform.js';
 import { renderActivityChart, renderProjectChart } from './charts.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-    const mainContent = document.getElementById('main-content');
-    const dashboardBtn = document.getElementById('dashboardBtn');
-    const tasksBtn = document.getElementById('tasksBtn');
-
-    dashboardBtn.addEventListener('click', showDashboard);
-    tasksBtn.addEventListener('click', showTasksTable);
-
-    // Mostrar dashboard por defecto
-    showDashboard();
+document.addEventListener('DOMContentLoaded', async () => {
+    // 0. Asegurar usuarios base hardcodeados
+    ensureBaseAssignedUsers();
+    // 1. Inicializar select de usuario y días libres
+    const assignedUsers = loadAssignedUsersFromLocal();
+    const assignedToSelect = document.getElementById('assignedTo');
+    if (assignedToSelect) {
+        assignedToSelect.innerHTML = '<option value="ALL">Todos los usuarios</option>' +
+            assignedUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+        // Set valor guardado
+        const filters = loadFiltersFromLocal();
+        assignedToSelect.value = filters.assignedTo || 'ALL';
+        assignedToSelect.addEventListener('change', () => {
+            const filters = loadFiltersFromLocal();
+            filters.assignedTo = assignedToSelect.value;
+            saveFiltersToLocal(filters);
+        });
+    }
+    const freeDaysInput = document.getElementById('freeDays');
+    if (freeDaysInput) {
+        const filters = loadFiltersFromLocal();
+        freeDaysInput.value = filters.freeDays || '';
+        freeDaysInput.addEventListener('change', () => {
+            const filters = loadFiltersFromLocal();
+            filters.freeDays = freeDaysInput.value;
+            saveFiltersToLocal(filters);
+        });
+    }
+    // 2. Configuración: si falta token/org, mostrar popup antes de cargar datos
+    const config = getConfig();
+    if (!config.organization || !config.pat) {
+        showConfigPopup();
+        return;
+    }
+    // 3. Flatpickr: inicializa y guarda la instancia
+    // Calcular semana actual (lunes a viernes)
+    function getCurrentWeekRange() {
+        const today = new Date();
+        const day = today.getDay();
+        // 0: domingo, 1: lunes, ..., 6: sábado
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - ((day + 6) % 7));
+        const friday = new Date(monday);
+        friday.setDate(monday.getDate() + 4);
+        return [monday, friday];
+    }
+    let defaultDates = getCurrentWeekRange();
+    let fpInstance = flatpickr("#dateRange", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: defaultDates,
+        locale: {
+            firstDayOfWeek: 1,
+            weekdays: {
+                shorthand: ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"],
+                longhand: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+            },
+            months: {
+                shorthand: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+                longhand: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+            },
+        }
+    });
+    // 4. Botón de cargar: guarda filtros y recarga dashboard
+    document.getElementById('loadGlobalBtn')?.addEventListener('click', () => {
+        // Leer fechas directamente de flatpickr
+        const selectedDates = fpInstance.selectedDates;
+        let dateFrom = '', dateTo = '';
+        if (selectedDates.length === 2) {
+            dateFrom = selectedDates[0].toISOString().split('T')[0];
+            dateTo = selectedDates[1].toISOString().split('T')[0];
+        } else if (selectedDates.length === 1) {
+            dateFrom = dateTo = selectedDates[0].toISOString().split('T')[0];
+        }
+        if (!dateFrom || !dateTo) {
+            alert('Por favor selecciona un rango de fechas válido.');
+            return;
+        }
+        // Actualizar el input visualmente
+        document.getElementById('dateRange').value = `${dateFrom} a ${dateTo}`;
+        const assignedTo = document.getElementById('assignedTo')?.value || 'ALL';
+        const freeDays = document.getElementById('freeDays')?.value || '';
+        // Guardar en localStorage
+        saveFiltersToLocal({ dateFrom, dateTo, assignedTo, freeDays });
+        updateDashboardVisual();
+    });
+    // 5. Botón de configuración
+    document.getElementById('editConfigBtn')?.addEventListener('click', showConfigPopup);
+    // 6. Cargar dashboard visual automáticamente (con filtros actuales)
+    updateDashboardVisual();
 });
 
 function saveConfigToLocal(config) {
@@ -147,7 +227,6 @@ const BASE_ASSIGNED_USERS = [
     "Santiago Paniagua <santiago.paniagua@lascatalinascr.com>"
 ];
 
-// Al inicio, siempre inicializa el localStorage con la lista base si no existe o es diferente
 function ensureBaseAssignedUsers() {
     const current = loadAssignedUsersFromLocal();
     const baseSorted = [...BASE_ASSIGNED_USERS].sort();
@@ -533,4 +612,341 @@ if (typeof window !== 'undefined') {
             loadTasksTable();
         }
     });
-} 
+}
+
+// Inicializar flatpickr para el filtro de fechas
+flatpickr("#dateRange", {
+    mode: "range",
+    dateFormat: "Y-m-d",
+    defaultDate: [new Date(new Date().setDate(new Date().getDate() - 7)), new Date()],
+    locale: {
+        firstDayOfWeek: 1,
+        weekdays: {
+            shorthand: ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"],
+            longhand: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+        },
+        months: {
+            shorthand: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+            longhand: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+        },
+    },
+});
+
+// Datos de ejemplo
+const kpiData = {
+    expected: 160,
+    logged: 145,
+    diff: -15,
+    effectiveness: 90.6,
+    sparkExpected: [8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8],
+    sparkLogged: [7, 8, 7, 8, 8, 7, 8, 7, 8, 8, 7, 8, 7, 8, 8, 7, 8, 7, 8, 8],
+    sparkDiff: [1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0],
+    sparkEffectiveness: [90, 92, 91, 89, 90, 91, 92, 90, 91, 90, 91, 92, 90, 91, 90, 91, 92, 90, 91, 90],
+};
+
+// Actualizar valores de KPIs
+function updateKPIs() {
+    document.getElementById("kpi-expected").textContent = kpiData.expected;
+    document.getElementById("kpi-logged").textContent = kpiData.logged;
+    document.getElementById("kpi-diff").textContent = kpiData.diff;
+    document.getElementById("kpi-effectiveness").textContent = kpiData.effectiveness + "%";
+}
+
+// --- DASHBOARD VISUAL CON DATOS REALES ---
+async function updateDashboardVisual() {
+    // 1. Obtener filtros desde flatpickr
+    let dateRange = document.getElementById('dateRange')?.value || '';
+    let dateFrom = '', dateTo = '';
+    if (dateRange.includes(' a ')) {
+        [dateFrom, dateTo] = dateRange.split(' a ');
+    } else if (dateRange) {
+        // Si solo hay una fecha, usarla como ambos extremos
+        dateFrom = dateTo = dateRange;
+    }
+    // Si el rango no es válido, usar últimos 7 días
+    if (!dateFrom || !dateTo || isNaN(new Date(dateFrom)) || isNaN(new Date(dateTo))) {
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+        dateFrom = lastWeek.toISOString().split('T')[0];
+        dateTo = today.toISOString().split('T')[0];
+        // Actualizar el input visualmente
+        if (document.getElementById('dateRange')) {
+            document.getElementById('dateRange').value = `${dateFrom} a ${dateTo}`;
+        }
+    }
+    // 2. Obtener config y filtros
+    const config = getConfig();
+    const org = config.organization;
+    const pat = config.pat;
+    const project = typeof HARDCODED_PROJECT !== 'undefined' ? HARDCODED_PROJECT : 'Devops System Process';
+    if (!org || !pat) return;
+    // 3. Obtener work items reales
+    let filters = loadFiltersFromLocal();
+    filters = { ...filters, dateFrom, dateTo };
+    saveFiltersToLocal(filters);
+    let workItems = [];
+    try {
+        const wiqlTemplate = config.wiql || getDefaultWIQL();
+        workItems = await fetchWorkItemsForProject(org, project, pat, wiqlTemplate, filters);
+    } catch (e) {
+        // Si hay error, limpiar dashboard
+        setKPIValues({ expected: 0, logged: 0, diff: 0, effectiveness: 0 });
+        return;
+    }
+    // 4. Calcular KPIs
+    const freeDays = filters.freeDays ? filters.freeDays.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const summary = getDashboardSummary(workItems, { dateFrom, dateTo, freeDays, assignedTo: filters.assignedTo });
+    // 5. Agrupar por usuario
+    const userMap = {};
+    workItems.forEach(wi => {
+        let user = wi.fields['System.AssignedTo'] || 'Sin asignar';
+        // Si es objeto, extraer displayName o uniqueName
+        if (typeof user === 'object' && user !== null) {
+            user = user.displayName || user.uniqueName || 'Sin asignar';
+        }
+        const duration = parseFloat(wi.fields['Custom.DurationInHours']) || 0;
+        if (!userMap[user]) userMap[user] = 0;
+        userMap[user] += duration;
+    });
+    const userNames = Object.keys(userMap);
+    const userHours = Object.values(userMap);
+    // 6. Sparklines: evolución diaria
+    const days = {};
+    workItems.forEach(wi => {
+        const date = (wi.fields['Microsoft.VSTS.Scheduling.StartDate'] || wi.fields['System.CreatedDate'] || '').split('T')[0];
+        const duration = parseFloat(wi.fields['Custom.DurationInHours']) || 0;
+        if (!date) return;
+        if (!days[date]) days[date] = 0;
+        days[date] += duration;
+    });
+    const sortedDates = Object.keys(days).sort();
+    // Calcular cantidad de usuarios para el rango
+    let userCount = 1;
+    if (filters.assignedTo === 'ALL') {
+        const assignedUsers = loadAssignedUsersFromLocal();
+        userCount = assignedUsers.length || 1;
+    }
+    const sparkLogged = sortedDates.map(d => days[d]);
+    const sparkExpected = sortedDates.map(() => 9 * userCount); // 9h/día por usuario
+    const sparkDiff = sparkLogged.map((v, i) => v - sparkExpected[i]);
+    const sparkEffectiveness = sparkLogged.map((v, i) => sparkExpected[i] > 0 ? Math.round((v / sparkExpected[i]) * 100) : 0);
+    // 7. Gráfico de línea: evolución semanal
+    // (ya calculado arriba)
+    // 8. Actualizar KPIs y gráficos
+    setKPIValues({
+        expected: summary.expectedHours,
+        logged: summary.totalHours,
+        diff: summary.totalHours - summary.expectedHours,
+        effectiveness: Math.round(summary.effectiveness * 10) / 10
+    });
+    renderSparklines({
+        sparkExpected,
+        sparkLogged,
+        sparkDiff,
+        sparkEffectiveness
+    });
+    renderBarUsers(userNames, userHours);
+    renderRadialCompliance(Math.round(summary.effectiveness * 10) / 10);
+    renderLineHours(sparkExpected, sparkLogged, sortedDates);
+    // 9. Gráficos adicionales: horas por AreaPath y actividad
+    // Horas por AreaPath (solo Tasks, agrupando por System.AreaPath)
+    const areaMap = {};
+    workItems.forEach(wi => {
+        if (wi.fields['System.WorkItemType'] !== 'Task') return;
+        let area = wi.fields['System.AreaPath'] || 'Sin Área';
+        // Tomar solo la última parte del AreaPath
+        if (area.includes('\\')) {
+            area = area.split('\\').pop();
+        } else if (area.includes('/')) {
+            area = area.split('/').pop();
+        }
+        const duration = parseFloat(wi.fields['Custom.DurationInHours']) || 0;
+        if (!areaMap[area]) areaMap[area] = 0;
+        areaMap[area] += duration;
+    });
+    // Top 10 áreas por horas
+    const areaSummary = Object.entries(areaMap)
+        .map(([area, hours]) => ({ area, hours }))
+        .sort((a, b) => b.hours - a.hours)
+        .slice(0, 10);
+    renderProjectChart(
+        areaSummary.map(item => ({ project: item.area, hours: item.hours }))
+    );
+    // Distribución de actividad
+    const activitySummary = getActivitySummary(workItems);
+    renderActivityChart(activitySummary);
+}
+
+function setKPIValues({ expected, logged, diff, effectiveness }) {
+    document.getElementById("kpi-expected").textContent = expected || 0;
+    document.getElementById("kpi-logged").textContent = logged || 0;
+    document.getElementById("kpi-diff").textContent = diff || 0;
+    document.getElementById("kpi-effectiveness").textContent = (effectiveness || 0) + "%";
+}
+
+function renderSparklines({ sparkExpected = [], sparkLogged = [], sparkDiff = [], sparkEffectiveness = [] }) {
+    const sparkOptions = (data, color) => ({
+        chart: {
+            type: 'line',
+            height: 40,
+            sparkline: { enabled: true }
+        },
+        stroke: { width: 2 },
+        series: [{ data }],
+        colors: [color],
+        tooltip: { enabled: false },
+    });
+    document.getElementById("spark-expected").innerHTML = '';
+    document.getElementById("spark-logged").innerHTML = '';
+    document.getElementById("spark-diff").innerHTML = '';
+    document.getElementById("spark-effectiveness").innerHTML = '';
+    new ApexCharts(document.querySelector("#spark-expected"), sparkOptions(sparkExpected, "#007bff")).render();
+    new ApexCharts(document.querySelector("#spark-logged"), sparkOptions(sparkLogged, "#28a745")).render();
+    new ApexCharts(document.querySelector("#spark-diff"), sparkOptions(sparkDiff, "#ffc107")).render();
+    new ApexCharts(document.querySelector("#spark-effectiveness"), sparkOptions(sparkEffectiveness, "#17a2b8")).render();
+}
+
+function renderBarUsers(userNames, userHours) {
+    const options = {
+        chart: { type: 'bar', height: 300 },
+        plotOptions: {
+            bar: { horizontal: true, borderRadius: 4 }
+        },
+        series: [{
+            name: 'Horas',
+            data: userHours
+        }],
+        xaxis: {
+            categories: userNames,
+            labels: { style: { colors: '#fff' } }
+        },
+        colors: ["#007bff"],
+        grid: { borderColor: '#343a40' },
+        theme: { mode: 'dark' },
+    };
+    document.getElementById("bar-users").innerHTML = '';
+    new ApexCharts(document.querySelector("#bar-users"), options).render();
+}
+
+function renderRadialCompliance(effectiveness) {
+    const options = {
+        chart: { type: 'radialBar', height: 300 },
+        series: [effectiveness],
+        labels: ['Efectividad'],
+        colors: ["#17a2b8"],
+        plotOptions: {
+            radialBar: {
+                hollow: { size: '70%' },
+                dataLabels: {
+                    name: { color: '#fff', fontSize: '18px' },
+                    value: { color: '#fff', fontSize: '32px', show: true, formatter: v => v + "%" }
+                }
+            }
+        },
+        theme: { mode: 'dark' },
+    };
+    document.getElementById("radial-compliance").innerHTML = '';
+    new ApexCharts(document.querySelector("#radial-compliance"), options).render();
+}
+
+function renderLineHours(sparkExpected, sparkLogged, categories) {
+    const options = {
+        chart: { type: 'area', height: 300, toolbar: { show: false } },
+        series: [
+            { name: 'Esperadas', data: sparkExpected },
+            { name: 'Registradas', data: sparkLogged }
+        ],
+        xaxis: {
+            categories: categories || [],
+            labels: { style: { colors: '#fff' } }
+        },
+        colors: ["#007bff", "#28a745"],
+        grid: { borderColor: '#343a40' },
+        theme: { mode: 'dark' },
+        dataLabels: { enabled: false },
+        stroke: { curve: 'smooth', width: 2 },
+        legend: { labels: { colors: '#fff' } },
+    };
+    document.getElementById("line-hours").innerHTML = '';
+    new ApexCharts(document.querySelector("#line-hours"), options).render();
+}
+
+// --- HOOKS: actualizar dashboard visual al cargar y al cambiar filtro ---
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Inicializar select de usuario y días libres
+    const assignedUsers = loadAssignedUsersFromLocal();
+    const assignedToSelect = document.getElementById('assignedTo');
+    if (assignedToSelect) {
+        assignedToSelect.innerHTML = '<option value="ALL">Todos los usuarios</option>' +
+            assignedUsers.map(u => `<option value="${u}">${u}</option>`).join('');
+        // Set valor guardado
+        const filters = loadFiltersFromLocal();
+        assignedToSelect.value = filters.assignedTo || 'ALL';
+        assignedToSelect.addEventListener('change', () => {
+            const filters = loadFiltersFromLocal();
+            filters.assignedTo = assignedToSelect.value;
+            saveFiltersToLocal(filters);
+        });
+    }
+    const freeDaysInput = document.getElementById('freeDays');
+    if (freeDaysInput) {
+        const filters = loadFiltersFromLocal();
+        freeDaysInput.value = filters.freeDays || '';
+        freeDaysInput.addEventListener('change', () => {
+            const filters = loadFiltersFromLocal();
+            filters.freeDays = freeDaysInput.value;
+            saveFiltersToLocal(filters);
+        });
+    }
+    // 2. Configuración: si falta token/org, mostrar popup antes de cargar datos
+    const config = getConfig();
+    if (!config.organization || !config.pat) {
+        showConfigPopup();
+        return;
+    }
+    // 3. Flatpickr: inicializa y guarda la instancia
+    let fpInstance = flatpickr("#dateRange", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        defaultDate: [new Date(new Date().setDate(new Date().getDate() - 7)), new Date()],
+        locale: {
+            firstDayOfWeek: 1,
+            weekdays: {
+                shorthand: ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"],
+                longhand: ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"],
+            },
+            months: {
+                shorthand: ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"],
+                longhand: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+            },
+        }
+    });
+    // 4. Botón de cargar: guarda filtros y recarga dashboard
+    document.getElementById('loadGlobalBtn')?.addEventListener('click', () => {
+        // Leer fechas directamente de flatpickr
+        const selectedDates = fpInstance.selectedDates;
+        let dateFrom = '', dateTo = '';
+        if (selectedDates.length === 2) {
+            dateFrom = selectedDates[0].toISOString().split('T')[0];
+            dateTo = selectedDates[1].toISOString().split('T')[0];
+        } else if (selectedDates.length === 1) {
+            dateFrom = dateTo = selectedDates[0].toISOString().split('T')[0];
+        }
+        if (!dateFrom || !dateTo) {
+            alert('Por favor selecciona un rango de fechas válido.');
+            return;
+        }
+        // Actualizar el input visualmente
+        document.getElementById('dateRange').value = `${dateFrom} a ${dateTo}`;
+        const assignedTo = document.getElementById('assignedTo')?.value || 'ALL';
+        const freeDays = document.getElementById('freeDays')?.value || '';
+        // Guardar en localStorage
+        saveFiltersToLocal({ dateFrom, dateTo, assignedTo, freeDays });
+        updateDashboardVisual();
+    });
+    // 5. Botón de configuración
+    document.getElementById('editConfigBtn')?.addEventListener('click', showConfigPopup);
+    // 6. Cargar dashboard visual automáticamente (con filtros actuales)
+    updateDashboardVisual();
+}); 
