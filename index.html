@@ -36,11 +36,13 @@
                     <option value="ALL">Todos los usuarios</option>
                 </select>
             </div>
-            <div class="col-md-3 col-sm-6 mb-2">
-                <input id="freeDays" class="form-control" placeholder="Días libres (YYYY-MM-DD, coma)">
+            <div class="col-md-2 col-sm-6 mb-2">
+                <button id="loadGlobalBtn" class="btn btn-primary w-100" style="height:auto;min-height:38px;">Cargar</button>
             </div>
             <div class="col-md-2 col-sm-6 mb-2">
-                <button id="loadGlobalBtn" class="btn btn-primary w-100">Cargar</button>
+                <button id="freeDaysModalBtn" class="btn btn-outline-info w-100" type="button" style="min-width:120px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:600;">
+                    <i class="fa fa-calendar"></i> Días libres
+                </button>
             </div>
             <div class="col-md-1 col-sm-12 mb-2 text-right">
                 <button id="editConfigBtn" class="btn btn-outline-secondary" title="Configurar conexión"><i class="fa fa-cog"></i></button>
@@ -148,6 +150,7 @@
     </div>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module" src="main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/es.js"></script>
     <script>
     // --- Configuración de organización hardcodeada y modal de token ---
     const HARDCODED_ORG = 'lascatalinas'; // Organización correcta
@@ -249,19 +252,21 @@
     window.fetch = async function(...args) {
         try {
             const response = await originalFetch.apply(this, args);
-            if (response.status === 401) {
+            if (response.status === 401 || response.status === 403) {
                 showAuthErrorModal();
             } else {
-                // Algunos errores de token pueden venir en el body
+                // Solo mostrar modal si el body contiene TF400813 (token inválido)
                 const text = await response.clone().text();
-                if (text && (text.includes('TF400813') || text.toLowerCase().includes('token') || text.toLowerCase().includes('unauthorized'))) {
+                if (text && text.includes('TF400813')) {
                     showAuthErrorModal();
                 }
             }
             return response;
         } catch (e) {
-            // Si el error es de autenticación
-            if (e && e.message && (e.message.toLowerCase().includes('token') || e.message.toLowerCase().includes('unauthorized'))) {
+            // Solo mostrar modal si el error es 401/403 o TF400813
+            if (e && e.response && (e.response.status === 401 || e.response.status === 403)) {
+                showAuthErrorModal();
+            } else if (e && e.message && e.message.includes('TF400813')) {
                 showAuthErrorModal();
             }
             throw e;
@@ -323,5 +328,25 @@
         try { return JSON.parse(localStorage.getItem('devopsConfig')) || {}; } catch { return {}; }
     }
     </script>
+    <!-- Modal de días libres -->
+    <div id="freeDaysModal" class="modal" tabindex="-1" role="dialog" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:99999;align-items:center;justify-content:center;">
+      <div class="modal-dialog" role="document" style="max-width:400px;width:95vw;">
+        <div class="modal-content" style="background:#232a36;color:#fff;border-radius:1.2rem;padding:24px;">
+          <div class="modal-header" style="border-bottom:1px solid #333;">
+            <h5 class="modal-title">Gestionar días libres</h5>
+            <button type="button" class="close" id="closeFreeDaysModal" style="color:#fff;font-size:1.5rem;background:none;border:none;" aria-label="Cerrar">&times;</button>
+          </div>
+          <div class="modal-body">
+            <label>Selecciona los días libres:</label>
+            <input id="freeDaysPicker" class="form-control mb-2" placeholder="Selecciona fechas" readonly>
+            <div id="freeDaysList" style="min-height:32px;"></div>
+          </div>
+          <div class="modal-footer" style="border-top:1px solid #333;">
+            <button type="button" class="btn btn-success" id="saveFreeDaysBtn">Guardar</button>
+            <button type="button" class="btn btn-secondary" id="cancelFreeDaysBtn">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
 </body>
 </html>

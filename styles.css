@@ -37,7 +37,7 @@ body {
     border-bottom: 1px solid #e9ecef;
 }
 .btn {
-    padding: 12px 24px;
+    padding: 10px 16px;
     border: none;
     border-radius: 8px;
     font-size: 14px;
@@ -45,6 +45,7 @@ body {
     cursor: pointer;
     transition: all 0.3s;
     margin: 5px;
+    min-height: 38px;
 }
 .btn-primary {
     background: linear-gradient(45deg, #0078d4, #106ebe);

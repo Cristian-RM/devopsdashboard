@@ -953,4 +953,77 @@ document.addEventListener('DOMContentLoaded', async () => {
     updateDashboardVisual();
 });
 
-window.fetchWorkItemsForProject = fetchWorkItemsForProject; 
+window.fetchWorkItemsForProject = fetchWorkItemsForProject;
+
+// --- DÍAS LIBRES: MODAL Y PICKER ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Botón para abrir el modal
+    const btn = document.getElementById('freeDaysModalBtn');
+    const modal = document.getElementById('freeDaysModal');
+    const closeBtn = document.getElementById('closeFreeDaysModal');
+    const cancelBtn = document.getElementById('cancelFreeDaysBtn');
+    const saveBtn = document.getElementById('saveFreeDaysBtn');
+    const pickerInput = document.getElementById('freeDaysPicker');
+    const listDiv = document.getElementById('freeDaysList');
+    if (!btn || !modal || !closeBtn || !cancelBtn || !saveBtn || !pickerInput || !listDiv) return;
+
+    // Estado temporal de fechas seleccionadas
+    let selectedDates = [];
+    // Inicializar flatpickr en el input del modal
+    let fpFreeDays = flatpickr(pickerInput, {
+        mode: 'multiple',
+        dateFormat: 'Y-m-d',
+        locale: 'es',
+        onChange: function(dates) {
+            selectedDates = dates.map(d => d.toISOString().split('T')[0]);
+            renderFreeDaysList();
+        }
+    });
+
+    // Renderiza la lista de días libres seleccionados
+    function renderFreeDaysList() {
+        if (!selectedDates.length) {
+            listDiv.innerHTML = '<span class="text-muted">No hay días libres seleccionados.</span>';
+            return;
+        }
+        listDiv.innerHTML = selectedDates.map(date =>
+            `<span class="badge badge-info mr-1 mb-1" style="font-size:1rem;">${date} <a href="#" data-date="${date}" style="color:#fff;text-decoration:none;font-weight:bold;" class="remove-free-day">&times;</a></span>`
+        ).join(' ');
+        // Quitar día libre
+        listDiv.querySelectorAll('.remove-free-day').forEach(el => {
+            el.onclick = (e) => {
+                e.preventDefault();
+                const date = el.getAttribute('data-date');
+                selectedDates = selectedDates.filter(d => d !== date);
+                fpFreeDays.setDate(selectedDates, true);
+                renderFreeDaysList();
+            };
+        });
+    }
+
+    // Abrir modal y cargar fechas actuales
+    btn.onclick = () => {
+        const filters = loadFiltersFromLocal();
+        selectedDates = (filters.freeDays ? filters.freeDays.split(',').map(s => s.trim()).filter(Boolean) : []);
+        fpFreeDays.setDate(selectedDates, true);
+        renderFreeDaysList();
+        modal.style.display = 'flex';
+    };
+    // Cerrar modal
+    function closeModal() { modal.style.display = 'none'; }
+    closeBtn.onclick = closeModal;
+    cancelBtn.onclick = closeModal;
+    // Guardar días libres
+    saveBtn.onclick = () => {
+        const filters = loadFiltersFromLocal();
+        filters.freeDays = selectedDates.join(',');
+        saveFiltersToLocal(filters);
+        closeModal();
+        updateDashboardVisual();
+        if (typeof updateTodayHoursWidget === 'function') updateTodayHoursWidget();
+    };
+    // Cerrar modal al hacer click fuera del contenido
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+}); 
