@@ -150,55 +150,6 @@ function getDefaultWIQL() {
     return `SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State], [System.TeamProject], [System.CreatedDate], [Microsoft.VSTS.Scheduling.TargetDate], [Microsoft.VSTS.Scheduling.StartDate], [Microsoft.VSTS.Common.Activity], [Custom.DurationInHours], [System.Parent] FROM WorkItems WHERE [Microsoft.VSTS.Scheduling.TargetDate] >= '${'${dateFrom}'}' AND [Microsoft.VSTS.Scheduling.TargetDate] <= '${'${dateTo}'}'`;
 }
 
-function showConfigPopup() {
-    const config = loadConfigFromLocal();
-    const wiql = config.wiql || getDefaultWIQL();
-    const popup = document.createElement('div');
-    popup.id = 'config-popup';
-    popup.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
-    popup.innerHTML = `
-        <div style="background:#fff;padding:30px 30px 20px 30px;border-radius:12px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px #0002;position:relative;">
-            <h3>Configuración de Conexión</h3>
-            <div class="form-group">
-                <label for="popup-organization">Organización</label>
-                <input type="text" id="popup-organization" value="${config.organization || ''}" placeholder="tu-organizacion">
-            </div>
-            <div class="form-group">
-                <label for="popup-pat">Personal Access Token</label>
-                <input type="password" id="popup-pat" value="${config.pat || ''}" placeholder="tu-pat-token">
-            </div>
-            <div class="form-group">
-                <label for="popup-wiql">Consulta WIQL personalizada</label>
-                <textarea id="popup-wiql" rows="6" style="width:100%;border-radius:8px;padding:8px;">${wiql}</textarea>
-                <small>Puedes usar <b>${'${dateFrom}'}</b> y <b>${'${dateTo}'}</b> para insertar las fechas de los filtros.<br>Para campos tipo <b>date</b> (como TargetDate), NO incluyas la hora.<br>Ejemplo: <code>[Microsoft.VSTS.Scheduling.TargetDate] &gt;= '${'${dateFrom}'}'</code></small>
-            </div>
-            <div class="form-group">
-                <label style="display:flex;align-items:center;gap:8px;">
-                    <input type="checkbox" id="popup-devMode" ${config.devMode ? 'checked' : ''}>
-                    Modo desarrollador (muestra logs de debug)
-                </label>
-            </div>
-            <button class="btn btn-primary" id="saveConfigBtn">Guardar</button>
-            <button class="btn btn-secondary" id="closeConfigBtn">Cancelar</button>
-        </div>
-    `;
-    document.body.appendChild(popup);
-    document.getElementById('saveConfigBtn').onclick = function() {
-        const newConfig = {
-            organization: document.getElementById('popup-organization').value,
-            pat: document.getElementById('popup-pat').value,
-            wiql: document.getElementById('popup-wiql').value,
-            devMode: document.getElementById('popup-devMode').checked
-        };
-        saveConfigToLocal(newConfig);
-        document.body.removeChild(popup);
-        showDashboard();
-    };
-    document.getElementById('closeConfigBtn').onclick = function() {
-        document.body.removeChild(popup);
-    };
-}
-
 function getConfig() {
     return loadConfigFromLocal();
 }
