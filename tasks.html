@@ -19,7 +19,9 @@
         <div class="ml-auto d-flex align-items-center">
             <button id="dashboardBtn" class="btn btn-outline-light mr-2" onclick="window.location.href='index.html'">Dashboard Global</button>
             <button id="tasksBtn" class="btn btn-outline-light active">Tabla de Tareas</button>
-            <button id="configBtn" class="btn btn-outline-secondary ml-2" onclick="showConfigModal()" title="Configurar Token"><i class="fa fa-cog"></i> Configurar</button>
+            <button id="configBtn" class="btn btn-light ml-2 p-0 d-flex align-items-center justify-content-center" style="width:36px;height:36px;border-radius:50%;box-shadow:0 1px 4px #0001;" onclick="showConfigModal()" title="Configurar Token">
+                <svg width="20" height="20" fill="#888" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v.41c.58.2 1.12.5 1.6.88l.29-.29a2 2 0 1 1 2.83 2.83l-.29.29c.38.48.68 1.02.88 1.6H13a2 2 0 0 1 0 4h-.41a5.97 5.97 0 0 1-.88 1.6l.29.29a2 2 0 1 1-2.83 2.83l-.29-.29a5.97 5.97 0 0 1-1.6.88V15a2 2 0 0 1-4 0v-.41a5.97 5.97 0 0 1-1.6-.88l-.29.29a2 2 0 1 1-2.83-2.83l.29-.29a5.97 5.97 0 0 1-.88-1.6H1a2 2 0 0 1 0-4h.41a5.97 5.97 0 0 1 .88-1.6l-.29-.29A2 2 0 1 1 4.83 3.29l.29.29c.48-.38 1.02-.68 1.6-.88V3a2 2 0 0 1 2-2zm0 2a1 1 0 0 0-1 1v1.09a5.97 5.97 0 0 0-2.47 1.03l-.77-.77a1 1 0 1 0-1.41 1.41l.77.77A5.97 5.97 0 0 0 3.09 7H2a1 1 0 1 0 0 2h1.09a5.97 5.97 0 0 0 1.03 2.47l-.77.77a1 1 0 1 0 1.41 1.41l.77-.77A5.97 5.97 0 0 0 7 12.91V14a1 1 0 1 0 2 0v-1.09a5.97 5.97 0 0 0 2.47-1.03l.77.77a1 1 0 0 0 1.41-1.41l-.77-.77A5.97 5.97 0 0 0 12.91 9H14a1 1 0 1 0 0-2h-1.09a5.97 5.97 0 0 0-1.03-2.47l.77-.77a1 1 0 1 0-1.41-1.41l-.77.77A5.97 5.97 0 0 0 9 3.09V3a1 1 0 0 0-1-1z"/></svg>
+            </button>
         </div>
     </nav>
     <!-- Filtros -->
@@ -76,19 +78,50 @@
         modal.id = 'config-modal';
         modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
         modal.innerHTML = `
-            <div style="background:#222;padding:30px 30px 20px 30px;border-radius:12px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px #0002;position:relative;color:#fff;">
-                <h4>Configurar Token de Acceso</h4>
-                <div class="form-group">
+            <div style="background:#222;padding:30px 30px 20px 30px;border-radius:12px;min-width:340px;max-width:95vw;box-shadow:0 8px 32px #0002;position:relative;color:#fff;max-width:500px;">
+                <h4 class='mb-3'>Configuración de Azure DevOps</h4>
+                <div class="form-group mb-2">
+                    <label>Organización</label>
+                    <input type="text" class="form-control" value="${HARDCODED_ORG}" readonly style="background:#333;color:#aaa;font-weight:bold;">
+                </div>
+                <div class="form-group mb-2">
                     <label for="pat-input">Personal Access Token (PAT)</label>
-                    <input type="password" id="pat-input" class="form-control" value="${pat}" placeholder="Tu PAT de Azure DevOps">
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="password" id="pat-input" class="form-control" value="${pat}" placeholder="Tu PAT de Azure DevOps" style="flex:1;">
+                        <button id="togglePat" class="btn btn-sm btn-secondary" tabindex="-1" style="min-width:40px;" onclick="togglePATVisibility()">👁️</button>
+                    </div>
+                </div>
+                <div class="mb-2" style="background:#1a2330;padding:12px 16px;border-radius:8px;font-size:0.97rem;">
+                    <b>¿Cómo generar tu token?</b>
+                    <ol style='font-size:0.97rem;margin-bottom:0;'>
+                        <li>Inicia sesión en <b>https://dev.azure.com/lascatalinas</b></li>
+                        <li>Haz clic en tu avatar (arriba a la derecha) y selecciona <b>Personal access tokens</b></li>
+                        <li>Haz clic en <b>+ New Token</b></li>
+                        <li>Asigna un nombre, selecciona la organización y la expiración</li>
+                        <li>Selecciona los <b>scopes</b> mínimos necesarios (recomendado: <b>Work Items (Read & Write)</b>)</li>
+                        <li>Haz clic en <b>Create</b> y copia el token generado</li>
+                        <li>Pega el token en este campo</li>
+                    </ol>
+                    <div class='mt-2'>Más info oficial: <a href='https://learn.microsoft.com/es-es/azure/devops/organizations/accounts/use-personal-access-tokens-to-authenticate?view=azure-devops&tabs=Windows' target='_blank' style='color:#4fd1c5;'>Guía Microsoft Docs</a></div>
                 </div>
                 <div class="text-right mt-3">
-                    <button class="btn btn-primary" onclick="savePAT()">Guardar</button>
-                    <button class="btn btn-secondary ml-2" onclick="closeConfigModal()">Cancelar</button>
+                    <button class="btn btn-success font-weight-bold" onclick="savePAT()">Guardar</button>
+                    <button class="btn btn-outline-light ml-2" onclick="closeConfigModal()">Cancelar</button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
+        window.togglePATVisibility = function() {
+            let input = document.getElementById('pat-input');
+            let btn = document.getElementById('togglePat');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                btn.textContent = '👁️';
+            }
+        }
     }
     function closeConfigModal() {
         let modal = document.getElementById('config-modal');
@@ -105,6 +138,58 @@
         localStorage.setItem('devopsConfig', JSON.stringify(config));
         closeConfigModal();
         alert('Token guardado correctamente.');
+    }
+    // Mostrar configuración automáticamente si no hay token
+    window.addEventListener('DOMContentLoaded', () => {
+        const pat = localStorage.getItem('devopsPAT');
+        if (!pat) setTimeout(showConfigModal, 400);
+    });
+    // Popup de error de autenticación
+    function showAuthErrorModal() {
+        let modal = document.createElement('div');
+        modal.id = 'auth-error-modal';
+        modal.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.4);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML = `
+            <div style=\"background:#fff;padding:30px 30px 20px 30px;border-radius:12px;min-width:320px;max-width:90vw;box-shadow:0 8px 32px #0002;position:relative;color:#222;max-width:400px;\">
+                <h4 class='mb-3' style='color:#dc3545;'>Error de autenticación</h4>
+                <div style='font-size:1rem;'>
+                    No se pudo autenticar con Azure DevOps.<br>
+                    Por favor, revisa o actualiza tu token de acceso personal (PAT).
+                </div>
+                <div class='text-right mt-3'>
+                    <button class='btn btn-primary' onclick='closeAuthErrorModal();showConfigModal();'>Actualizar token</button>
+                    <button class='btn btn-outline-secondary ml-2' onclick='closeAuthErrorModal()'>Cerrar</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    function closeAuthErrorModal() {
+        let modal = document.getElementById('auth-error-modal');
+        if (modal) document.body.removeChild(modal);
+    }
+    // Hook para detectar error de autenticación en fetch
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+        try {
+            const response = await originalFetch.apply(this, args);
+            if (response.status === 401) {
+                showAuthErrorModal();
+            } else {
+                // Algunos errores de token pueden venir en el body
+                const text = await response.clone().text();
+                if (text && (text.includes('TF400813') || text.toLowerCase().includes('token') || text.toLowerCase().includes('unauthorized'))) {
+                    showAuthErrorModal();
+                }
+            }
+            return response;
+        } catch (e) {
+            // Si el error es de autenticación
+            if (e && e.message && (e.message.toLowerCase().includes('token') || e.message.toLowerCase().includes('unauthorized'))) {
+                showAuthErrorModal();
+            }
+            throw e;
+        }
     }
     </script>
 </body>

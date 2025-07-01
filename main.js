@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Guardar en localStorage
         saveFiltersToLocal({ dateFrom, dateTo, assignedTo, freeDays });
         updateDashboardVisual();
+        if (typeof updateTodayHoursWidget === 'function') updateTodayHoursWidget();
     });
     // 5. Botón de configuración
     document.getElementById('editConfigBtn')?.addEventListener('click', showConfigPopup);
@@ -944,9 +945,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Guardar en localStorage
         saveFiltersToLocal({ dateFrom, dateTo, assignedTo, freeDays });
         updateDashboardVisual();
+        if (typeof updateTodayHoursWidget === 'function') updateTodayHoursWidget();
     });
     // 5. Botón de configuración
     document.getElementById('editConfigBtn')?.addEventListener('click', showConfigPopup);
     // 6. Cargar dashboard visual automáticamente (con filtros actuales)
     updateDashboardVisual();
-}); 
+});
+
+window.fetchWorkItemsForProject = fetchWorkItemsForProject; 
